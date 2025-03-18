@@ -1,103 +1,149 @@
 <template>
-    <div>
-      <h2 v-if="task">
-        {{ task.attributes.title }}
-      </h2>
-      <p v-if="task">
-        Status: {{ task.attributes.status }}
-      </p>
-      <p v-else>Načítám detail...</p>
-  
-      <button @click="updateStatus('done')">Označit jako hotovo</button>
-      <button @click="removeTask">Smazat</button>
-  
-      <p v-if="error">{{ error }}</p>
+  <div class="task-details-container" v-if="task">
+    <h2 class="task-title">{{ task.Title }}</h2>
+    <p class="task-status">Status: <strong>{{ task.Task }}</strong></p>
+    <p v-if="task.DueDate" class="task-due-date">Due Date: <strong>{{ task.DueDate }}</strong></p>
+
+    <div class="task-actions">
+      <button class="mark-done-button" @click="updateStatus('done')">Mark as Done</button>
+      <button class="delete-button" @click="removeTask">Delete Task</button>
     </div>
-  </template>
-  
-  <script setup lang="ts">
-  import { ref, onMounted } from 'vue'
-  import { useRoute } from '#app'
-  import { useRuntimeConfig } from '#app'
-  import { useAuth } from '~/composables/useAuth'
-  
-  interface TaskAttributes {
-    title: string
-    description?: string
-    status: 'pending' | 'in progress' | 'done'
-    dueDate?: string
+  </div>
+  <div v-else class="loading-message">
+    Loading task details...
+  </div>
+</template>
+
+<script setup lang="ts">
+import { ref, onMounted } from 'vue';
+import { definePageMeta, useRoute } from '#app';
+import { useRouter } from 'vue-router';
+import { useStrapiFetch } from '~/composables/useStrapiFetch';
+
+interface TaskEntity {
+  id: number;
+  Title: string;
+  Task: string;
+  DueDate?: string;
+  createdAt?: string;
+}
+
+interface TaskSingleResponse {
+  data: TaskEntity;
+}
+
+definePageMeta({
+  middleware: ['auth'],
+});
+
+const route = useRoute();
+const router = useRouter();
+
+const taskId = Number(route.params.id);
+const task = ref<TaskEntity | null>(null);
+
+onMounted(() => {
+  loadTask();
+});
+
+async function loadTask() {
+  try {
+    const response = await useStrapiFetch<TaskSingleResponse>(`/api/tasks/${taskId}`);
+    task.value = response.data || null;
+  } catch (err) {
+    console.error('Error while loading details:', err);
   }
-  
-  interface TaskData {
-    id: number
-    attributes: TaskAttributes
-  }
-  
-  const route = useRoute()
-  const config = useRuntimeConfig()
-  const { token } = useAuth()
-  
-  const task = ref<TaskData | null>(null)
-  const error = ref<string | null>(null)
-  
-  onMounted(fetchTask)
-  
-  async function fetchTask() {
-    const id = route.params.id
-    try {
-      const { data, error: fetchError } = await useFetch<{ data: TaskData }>(
-        `/api/tasks/${id}`,
-        {
-          baseURL: config.public.strapiUrl,
-          headers: {
-            Authorization: `Bearer ${token.value}`
-          }
-        }
-      )
-      if (fetchError.value) {
-        throw new Error(fetchError.value.message)
-      }
-      task.value = data.value?.data || null
-    } catch (err: any) {
-      error.value = err.message
-    }
-  }
-  
-  async function updateStatus(newStatus: string) {
-    if (!task.value) return
-    try {
-      await useFetch(`/api/tasks/${task.value.id}`, {
-        baseURL: config.public.strapiUrl,
-        method: 'PUT',
-        headers: {
-          Authorization: `Bearer ${token.value}`
+}
+
+async function updateStatus(newStatus: string) {
+  try {
+    await useStrapiFetch(`/api/tasks/${taskId}`, {
+      method: 'PUT',
+      body: {
+        data: {
+          Task: newStatus,
         },
-        body: {
-          data: {
-            status: newStatus
-          }
-        }
-      })
-      fetchTask()
-    } catch (err) {
-      console.error(err)
-    }
+      },
+    });
+    loadTask();
+  } catch (err) {
+    console.error('Failed to change status:', err);
   }
-  
-  async function removeTask() {
-    if (!task.value) return
-    try {
-      await useFetch(`/api/tasks/${task.value.id}`, {
-        baseURL: config.public.strapiUrl,
-        method: 'DELETE',
-        headers: {
-          Authorization: `Bearer ${token.value}`
-        }
-      })
-      navigateTo('/tasks')
-    } catch (err) {
-      console.error(err)
-    }
+}
+
+async function removeTask() {
+  try {
+    await useStrapiFetch(`/api/tasks/${taskId}`, {
+      method: 'DELETE',
+    });
+    router.push('/tasks');
+  } catch (err) {
+    console.error('Failed to delete task:', err);
   }
-  </script>
-  
+}
+</script>
+
+<style scoped>
+.task-details-container {
+  max-width: 600px;
+  margin: 0 auto;
+  padding: 20px;
+  font-family: Arial, sans-serif;
+  background: #f9f9f9;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+}
+
+.task-title {
+  font-size: 1.8rem;
+  margin-bottom: 10px;
+  text-align: center;
+}
+
+.task-status,
+.task-due-date {
+  font-size: 1.2rem;
+  margin-bottom: 10px;
+  text-align: center;
+}
+
+.task-actions {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.mark-done-button {
+  padding: 10px 20px;
+  background-color: #4caf50;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.mark-done-button:hover {
+  background-color: #45a049;
+}
+
+.delete-button {
+  padding: 10px 20px;
+  background-color: #e74c3c;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.delete-button:hover {
+  background-color: #c0392b;
+}
+
+.loading-message {
+  text-align: center;
+  font-size: 1.2rem;
+  color: #888;
+  margin-top: 20px;
+}
+</style>

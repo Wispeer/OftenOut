@@ -1,8 +1,19 @@
-<!-- pages/index.vue -->
 <template>
-    <div style="padding: 2rem;">
-      <h1>Home Page</h1>
-      <p>Nuxt 3 s explicitními závislostmi na vue a vue-router.</p>
-    </div>
-  </template>
-  
+  <div></div>
+</template>
+
+<script setup lang="ts">
+import { useRouter } from "vue-router";
+
+const router = useRouter();
+
+if (process.client) {
+  const token = localStorage.getItem("token");
+
+  if (!token) {
+    router.push("/login");
+  } else {
+    router.push("/tasks");
+  }
+}
+</script>

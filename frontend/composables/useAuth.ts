@@ -1,66 +1,56 @@
-import type { Ref } from 'vue'
+import { ref } from 'vue'
+import { useRuntimeConfig } from 'nuxt/app'
+
+interface AuthUser {
+  id: number
+  username: string
+  email: string
+}
 
 interface AuthResponse {
   jwt: string
-  user: {
-    id: number
-    username: string
-    email: string
-    // atd. dle Strapi
-  }
+  user: AuthUser
 }
 
+const user = ref<AuthUser | null>(null)
+
 export function useAuth() {
-  const token = useState<string | null>('auth_token', () => null)
   const config = useRuntimeConfig()
 
-  async function login(identifier: string, password: string) {
+  async function login(email: string, password: string) {
     try {
-      const { data, error } = await useFetch<AuthResponse>('/api/auth/local', {
-        baseURL: config.public.strapiUrl,
-        method: 'POST',
-        body: {
-          identifier,
-          password
-        }
-      })
-      if (error.value) {
-        throw new Error(error.value.message)
-      }
-      token.value = data.value?.jwt || null
-    } catch (err) {
-      throw err
-    }
-  }
+      console.log('Sending login request...')
 
-  async function register(username: string, email: string, password: string) {
-    try {
-      const { data, error } = await useFetch<AuthResponse>('/api/auth/local/register', {
-        baseURL: config.public.strapiUrl,
+      const res = await $fetch<AuthResponse>(`${config.public.strapiUrl}/api/auth/local`, {
         method: 'POST',
         body: {
-          username,
-          email,
+          identifier: email,
           password
         }
       })
-      if (error.value) {
-        throw new Error(error.value.message)
+
+      if (!res.jwt) {
+        throw new Error('Login failed: No token was returned.')
       }
-      token.value = data.value?.jwt || null
+
+      console.log('Login successful, saving token...')
+      localStorage.setItem('token', res.jwt)
+      user.value = res.user
     } catch (err) {
-      throw err
+      console.error('Error during login:', err)
+      throw new Error('Login failed: ' + (err as Error).message)
     }
   }
 
   function logout() {
-    token.value = null
+    console.log('Logging out...')
+    localStorage.removeItem('token')
+    user.value = null
   }
 
   return {
-    token,
+    user,
     login,
-    register,
     logout
   }
 }

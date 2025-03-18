@@ -92,8 +92,8 @@ NUXT_PUBLIC_STRAPI_URL=http://localhost:1337
 ## Important Files  
 | File                                   | Description                     |
 |----------------------------------------|---------------------------------|
-| `backend/src/api/task/controllers/task.js` | Task API logic                 |
-| `backend/src/api/user/controllers/user.js` | User API                       |
+| `backend/src/api/task/controllers/task.ts` | Task API logic                 |
+| `backend/src/api/user/controllers/user.ts` | User API                       |
 | `frontend/composables/useTasks.ts`       | Task CRUD operations           |
 | `frontend/composables/useAuth.ts`        | User authentication            |
 | `frontend/pages/tasks.vue`               | Task list page                 |
